@@ -1,20 +1,14 @@
 #define WINVER 0x0600
 #define _WIN32_WINNT 0x0600
-#define WM_TRAYICON (WM_USER + 1)  // Определение WM_TRAYICON
+#define WM_TRAYICON (WM_USER + 1)
+#define MUTEX_NAME L"Local\\screenShadowMutex"
 
 #include <windows.h>
 #include "MouseHook.h"
 #include "Overlay.h"
 #include "resource.h"
 
-// Для предотвращения запуска нескольких экземпляров
-#define MUTEX_NAME L"Local\\screenShadowMutex"
-
-NOTIFYICONDATA nid = { 0 };
-HMENU hTrayMenu = nullptr;
-HWND hWndTrayStub = nullptr;
-
-// Функция установки DPI-aware режима
+// DPI-awareness: поддержка корректных координат на мониторах с разным масштабированием.
 static BOOL EnableDPIAwareness() {
     typedef BOOL (WINAPI *SetProcessDpiAwarenessContextProc)(HANDLE);
     HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
@@ -35,6 +29,11 @@ static BOOL EnableDPIAwareness() {
     }
     return FALSE;
 }
+
+// Добавляет иконку в системный трей с контекстным меню.
+NOTIFYICONDATA nid = { 0 };
+HMENU hTrayMenu = nullptr;
+HWND hWndTrayStub = nullptr;
 
 void AddTrayIcon(HINSTANCE hInstance) {
     hTrayMenu = CreatePopupMenu();
@@ -94,6 +93,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 
     EnableDPIAwareness();
 
+    // Регистрация служебного окна для системного трея.
     WNDCLASSW wc = { 0 };
     wc.lpfnWndProc = DummyWndProc;
     wc.hInstance = hInstance;

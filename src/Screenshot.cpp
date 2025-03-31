@@ -26,9 +26,8 @@ static HBITMAP g_screenshotBitmap = nullptr;
 static WCHAR g_screenshotFile[MAX_PATH] = {0};
 static HHOOK g_contextHook = nullptr;
 
-// Вспомогательная функция для получения CLSID энкодера по MIME-типу.
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
-    UINT num = 0;
+    UINT num = 0; 
     UINT size = 0;
     GetImageEncodersSize(&num, &size);
     if (size == 0)
@@ -51,24 +50,24 @@ int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
     return ret;
 }
 
-// Функция, которая устанавливает данные в буфер обмена в зависимости от контекста.
+// Функция, устанавливающая данные в буфер обмена в зависимости от контекста (проводник или другое окно).
 void SetClipboardForContext(bool isExplorer) {
     if (g_screenshotBitmap == nullptr || g_screenshotFile[0] == L'\0')
-        return; // Нет данных для установки
+        return;
 
     if (OpenClipboard(nullptr)) {
         EmptyClipboard();
-        // Всегда устанавливаем CF_BITMAP
+        // Всегда устанавливаем CF_BITMAP – для большинства приложений (например, браузеров, форм).
         SetClipboardData(CF_BITMAP, g_screenshotBitmap);
 
-        // Если целевое окно — проводник, дополнительно устанавливаем CF_HDROP для файла.
+        // Если активное окно проводника, дополнительно устанавливаем CF_HDROP для вставки файла.
         if (isExplorer) {
-            size_t fileNameLen = wcslen(g_screenshotFile) + 1; // с нулевым терминатором
+            size_t fileNameLen = wcslen(g_screenshotFile) + 1;
             size_t dropFilesSize = sizeof(DROPFILES) + (fileNameLen * sizeof(WCHAR));
             HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, dropFilesSize);
             if (hGlobal) {
                 DROPFILES* dropFiles = (DROPFILES*)GlobalLock(hGlobal);
-                dropFiles->pFiles = sizeof(DROPFILES); // смещение до списка файлов
+                dropFiles->pFiles = sizeof(DROPFILES);
                 dropFiles->pt.x = 0;
                 dropFiles->pt.y = 0;
                 dropFiles->fNC = FALSE;
@@ -80,34 +79,28 @@ void SetClipboardForContext(bool isExplorer) {
         }
         CloseClipboard();
     }
-    // После установки удаляем временный хук и очищаем глобальные данные.
     if (g_contextHook) {
         UnhookWindowsHookEx(g_contextHook);
         g_contextHook = nullptr;
     }
-    // Графический объект теперь передан в буфер обмена, поэтому не удаляем его.
     g_screenshotBitmap = nullptr;
     g_screenshotFile[0] = L'\0';
 }
 
-// Временный low-level mouse hook для определения контекста на основе клика.
+// Временный низкоуровневый mouse hook для определения контекста по клику мыши.
 LRESULT CALLBACK ContextMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && wParam == WM_LBUTTONUP) {
-        // При отпускании левой кнопки мыши получаем активное окно.
         HWND fg = GetForegroundWindow();
         WCHAR className[256] = {0};
         GetClassNameW(fg, className, 256);
-        // Если активное окно проводника (Explorer) — его классы могут быть "CabinetWClass" или "ExploreWClass".
         bool isExplorer = (wcscmp(className, L"CabinetWClass") == 0 || wcscmp(className, L"ExploreWClass") == 0);
-        // Устанавливаем буфер обмена в зависимости от контекста.
         SetClipboardForContext(isExplorer);
     }
     return CallNextHookEx(g_contextHook, nCode, wParam, lParam);
 }
 
-// Захватывает изображение экрана в пределах заданного прямоугольника,
-// сохраняет его как PNG во временной папке, но не устанавливает данные в буфер сразу.
-// Вместо этого данные сохраняются в глобальных переменных, а установка буфера происходит по следующему клику.
+// Захватывает изображение экрана в заданном прямоугольнике, сохраняет его как PNG
+// во временной папке и откладывает установку данных в буфер обмена до следующего клика мыши.
 void CaptureAndPrepareClipboard(RECT rect) {
     int width = rect.right - rect.left;
     int height = rect.bottom - rect.top;
@@ -121,7 +114,6 @@ void CaptureAndPrepareClipboard(RECT rect) {
 
     BitBlt(memDC, 0, 0, width, height, screenDC, rect.left, rect.top, SRCCOPY);
 
-    // Инициализация GDI+ для сохранения в PNG.
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
@@ -132,7 +124,6 @@ void CaptureAndPrepareClipboard(RECT rect) {
     GetTempPathW(MAX_PATH, tempPath);
     WCHAR fileName[MAX_PATH];
     GetTempFileNameW(tempPath, L"SCN", 0, fileName);
-    // Меняем расширение на .png.
     WCHAR* dot = wcsrchr(fileName, L'.');
     if (dot)
         wcscpy(dot, L".png");
@@ -148,23 +139,18 @@ void CaptureAndPrepareClipboard(RECT rect) {
     }
 
     Status status = bitmap->Save(fileName, &pngClsid, nullptr);
-    // Можно добавить проверку status при необходимости.
+    // При необходимости можно добавить проверку status
 
     delete bitmap;
     GdiplusShutdown(gdiplusToken);
 
-    // Возвращаем оригинальный объект в DC.
     SelectObject(memDC, oldBmp);
     DeleteDC(memDC);
     ReleaseDC(nullptr, screenDC);
 
-    // Сохраняем полученные данные в глобальных переменных.
     g_screenshotBitmap = hBitmap;
     wcscpy(g_screenshotFile, fileName);
 
-    // Устанавливаем временный mouse hook, чтобы по следующему клику определить контекст.
+    // Устанавливаем временный mouse hook для определения контекста по следующему клику мыши.
     g_contextHook = SetWindowsHookExW(WH_MOUSE_LL, ContextMouseProc, nullptr, 0);
 }
-
-// Основная функция захвата, ранее называлась CaptureAndCopyToClipboard,
-// теперь называется CaptureAndPrepareClipboard, и вызывается из кода выделения.

@@ -1,6 +1,6 @@
 #include "MouseHook.h"
 #include "Overlay.h"
-#include "Screenshot.h" // Убедитесь, что здесь подключён правильный заголовок
+#include "Screenshot.h" // Обновлённый заголовок с прототипом CaptureAndPrepareClipboard
 #include <windows.h>
 #include <algorithm>
 
@@ -18,11 +18,10 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
                 movedWhileHolding = false;
                 break;
             }
-
             case WM_MOUSEMOVE: {
                 if (rbuttonHeld) {
                     if (!selecting && (ms->pt.x != currentPoint.x || ms->pt.y != currentPoint.y)) {
-                        // Получаем монитор до присвоения startPoint
+                        // Определяем монитор, на котором происходит выделение (поддержка двух мониторов)
                         HMONITOR monitor = MonitorFromPoint(ms->pt, MONITOR_DEFAULTTONEAREST);
                         MONITORINFO mi = { sizeof(mi) };
                         GetMonitorInfo(monitor, &mi);
@@ -33,17 +32,14 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
                         selecting = true;
                         CreateOverlayWindow(GetModuleHandle(nullptr), startPoint);
                     }
-
                     movedWhileHolding = true;
                     currentPoint = ms->pt;
                     InvalidateRect(overlayWindow, nullptr, TRUE);
                 }
                 break;
             }
-
             case WM_RBUTTONUP: {
                 rbuttonHeld = false;
-
                 if (selecting && movedWhileHolding) {
                     selecting = false;
                     DestroyOverlayWindow();
@@ -58,7 +54,8 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
                     if ((selection.right - selection.left) >= 5 &&
                         (selection.bottom - selection.top) >= 5) {
-                        // Используем новую функцию, которая устанавливает данные в буфер обмена с учетом контекста.
+                        // Теперь вызываем функцию, которая подготавливает данные для буфера обмена,
+                        // учитывая, что поддержка двух мониторов уже реализована.
                         CaptureAndPrepareClipboard(selection);
                     }
                 } else if (selecting) {
@@ -69,7 +66,6 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
             }
         }
     }
-
     return CallNextHookEx(mouseHook, nCode, wParam, lParam);
 }
 

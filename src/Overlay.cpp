@@ -19,7 +19,7 @@ static LRESULT CALLBACK OverlayProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
             GetClientRect(hwnd, &clientRect);
             FillRect(hdc, &clientRect, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
-            // Преобразуем глобальные координаты в локальные относительно границ монитора.
+            // Преобразуем глобальные координаты в локальные относительно границ выбранного монитора.
             POINT localStart = { startPoint.x - monitorBounds.left, startPoint.y - monitorBounds.top };
             POINT localCurrent = { currentPoint.x - monitorBounds.left, currentPoint.y - monitorBounds.top };
 
@@ -29,7 +29,7 @@ static LRESULT CALLBACK OverlayProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
             rect.right  = std::max(localStart.x, localCurrent.x);
             rect.bottom = std::max(localStart.y, localCurrent.y);
 
-            // Заливка выделенной области – красный оттенок (стиль "Шэдоу").
+            // Заливка выделенной области – красный оттенок в стиле "screenShadow".
             HBRUSH fillBrush = CreateSolidBrush(RGB(128, 0, 32));
             FillRect(hdc, &rect, fillBrush);
             DeleteObject(fillBrush);
@@ -65,6 +65,7 @@ static LRESULT CALLBACK OverlayProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 }
 
 void CreateOverlayWindow(HINSTANCE hInstance, POINT anchor) {
+    // Определяем монитор, где происходит выделение (поддержка двух мониторов)
     HMONITOR monitor = MonitorFromPoint(anchor, MONITOR_DEFAULTTONEAREST);
     MONITORINFO mi = { 0 };
     mi.cbSize = sizeof(mi);
