@@ -26,7 +26,7 @@ namespace screenShadow
             // Иконка в трее
             trayIcon = new NotifyIcon()
             {
-                Icon = new Icon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico")),
+                Icon = new Icon(typeof(Program).Assembly.GetManifestResourceStream("screenShadow.icon.ico")),
                 ContextMenuStrip = trayMenu,
                 Text = "screenShadow работает",
                 Visible = true
