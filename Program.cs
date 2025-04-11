@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Windows.Forms;
 
-namespace screenShadow
+namespace screenShadow 
 {
     static class Program
     {

@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace screenShadow
 {
-    public class ScreenOverlay : Form
+    public class ScreenOverlay : Form 
     {
         private Point startPoint;
         private Point currentPoint;

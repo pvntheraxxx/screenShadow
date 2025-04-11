@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace screenShadow
 {
-    public class GlobalMouseHook
+    public class GlobalMouseHook 
     {
         private static DateTime lastRightClickTime = DateTime.MinValue;
         private static readonly TimeSpan doubleClickThreshold = TimeSpan.FromMilliseconds(300); // можно настроить
